@@ -4,6 +4,8 @@ close all;
 
 % Find Project Directory
 % Assumes script is in a 'scripts' folder below the top project directory
+% and data is not in duplicate folders ie. "Training/Faulty" not
+% "Training/Training/Faulty"
 if ispc
     delimeter = "\";
 else
@@ -35,6 +37,16 @@ HorFVTrain=[structuretrain.HorF]';
 
 FMTest=[[structuretest.magnear20]',[structuretest.magnear40]',[structuretest.stdv20]',[structuretest.stdv40]'];
 NamesTest=createnamevec(structuretest);
+
+% Train Log Regression
+linCoef = glmfit([structuretrain.magnear20], [structuretrain.HorF]', 'binomial','link','logit');
+figure(1)
+trainingResults = plotLogRegression([structuretrain.magnear20], linCoef);
+title('Training Data')
+
+figure(2)
+testingResults = plotLogRegression([structuretest.magnear20], linCoef);
+title('Testing Data')
 
 % figure(1)
 % plot([structuretrain.magnear20]')
@@ -87,6 +99,21 @@ function [structure] = plotcurves(structure, directorys)
         hold off
         saveas(gcf,strcat(directorys,name,'.pdf'))
     end
+end
+
+function failureProb = plotLogRegression(predictData, linCoefs)
+z = @(x)(linCoefs(1) + (x*linCoefs(2)));
+zFinal = @(x)(1 ./(1+exp(-(z(x)))));   
+failureProb = zFinal(predictData);
+plot(predictData,failureProb,'*');
+funcMin = min(predictData);
+funcMax = max(predictData);
+funcSamplePoints = funcMin:(funcMax-funcMin)/1000:funcMax;
+hold on
+plot(funcSamplePoints,zFinal(funcSamplePoints));
+xlabel('Magnitude of Acceleration at 20Hz');
+ylabel('Probability of Healthy Spindle');
+hold off
 end
 
 function [structure] = createstructure(directory,structure,HorF)
