@@ -1,7 +1,6 @@
 clc;
 clear;
 close all;
-
 % Find Project Directory
 % Assumes script is in a 'scripts' folder below the top project directory
 % and data is not in duplicate folders ie. "Training/Faulty" not
@@ -26,28 +25,23 @@ structuretest=struct([]);
 directoryTe=join([projectPath,"Testing",""],delimeter);
 structuretest = createstructure(directoryTe,structuretest,-1);
 
-directorys=join([projectPath,"results",""],delimeter);
+directorys=join([projectPath,"Results",""],delimeter);
 %plotcurves(structuretrain, directorys)
 %plotcurves(structuretest, directorys)
 
+%[1]
 FMTrain=[[structuretrain.magnear20]',[structuretrain.stdv20]',[structuretrain.magnear40]',[structuretrain.stdv40]'];
 NamesTrain=createnamevec(structuretrain);
-HorFVTrain=[structuretrain.HorF]';
+HorFVTrain=[structuretrain.HorF]'+1;
 
+B=mnrfit(FMTrain,HorFVTrain);
+predtrain=1./(1+exp(-[ones(length(HorFVTrain),1),FMTrain]*B));
 
-FMTest=[[structuretest.magnear20]',[structuretest.magnear40]',[structuretest.stdv20]',[structuretest.stdv40]'];
+FMTest=[[structuretest.magnear20]',[structuretest.stdv20]',[structuretest.magnear40]',[structuretest.stdv40]'];
 NamesTest=createnamevec(structuretest);
 
-% Train Log Regression
-linCoef = glmfit([structuretrain.magnear20], [structuretrain.HorF]', 'binomial','link','logit');
-figure(1)
-trainingResults = plotLogRegression([structuretrain.magnear20], linCoef);
-title('Training Data')
-
-figure(2)
-testingResults = plotLogRegression([structuretest.magnear20], linCoef);
-title('Testing Data')
-
+predtest=1./(1+exp(-[ones(size(FMTest,1),1),FMTest]*B));
+plotcurves(structuretest, directorys)
 % figure(1)
 % plot([structuretrain.magnear20]')
 % xlabel('File')
@@ -84,36 +78,22 @@ function [structure] = plotcurves(structure, directorys)
         subplot(2,1,1)
         plot(structure(i).time,structure(i).acc)
         title(name)
-        xlabel('Time')
-        ylabel('Acc')
+        xlabel('Time (s)')
+        ylabel('Acceleration')
         subplot(2,1,2)
         plot(structure(i).freq,structure(i).mag,'DisplayName','FFT')
         hold on
         plot(structure(i).freqnear20, structure(i).magnear20, 'r.', 'LineWidth', 2, 'MarkerSize', 25, 'DisplayName','Max Near 20');
         hold on
-        plot(structure(i).freqnear40, structure(i).magnear40, 'g.', 'LineWidth', 2, 'MarkerSize', 25,'DisplayName','Max Near 60');
+        plot(structure(i).freqnear40, structure(i).magnear40, 'g.', 'LineWidth', 2, 'MarkerSize', 25,'DisplayName','Max Near 40');
         legend;
         xlabel('freq(Hz)')
-        xlim([0 100])
-        ylabel('Mag')
+        xlim([0 60])
+        %ylim([0 0.03])
+        ylabel('Magnitude')
         hold off
-        saveas(gcf,strcat(directorys,name,'.pdf'))
+        saveas(gcf,strcat(directorys,name,'.jpg'))
     end
-end
-
-function failureProb = plotLogRegression(predictData, linCoefs)
-z = @(x)(linCoefs(1) + (x*linCoefs(2)));
-zFinal = @(x)(1 ./(1+exp(-(z(x)))));   
-failureProb = zFinal(predictData);
-plot(predictData,failureProb,'*');
-funcMin = min(predictData);
-funcMax = max(predictData);
-funcSamplePoints = funcMin:(funcMax-funcMin)/1000:funcMax;
-hold on
-plot(funcSamplePoints,zFinal(funcSamplePoints));
-xlabel('Magnitude of Acceleration at 20Hz');
-ylabel('Probability of Healthy Spindle');
-hold off
 end
 
 function [structure] = createstructure(directory,structure,HorF)
@@ -157,6 +137,7 @@ function [time,acc] = Opentxtfile(file)
 end
 
 function [freqmax,magmax] = findmax(freq,mag,mintarget,maxtarget)
+    %[2]
     [~,idmax]=min(abs(freq-maxtarget));
     [~,idmin]=min(abs(freq-mintarget));
     [magmax,idf]=max(mag(idmin:idmax));
@@ -168,3 +149,9 @@ function stdevf = stdevr(freq,mag,freqt)
     [~,idmin]=min(abs(freq-(freqt*0.8)));
     stdevf=std(mag(idmin:idmax));
 end
+
+%Ref
+%[1] PARISlab@UCLA. Training a Logistic Regression Classification Model with Matlab – Machine Learning for Engineers. 21 May 2020. 11 February 2022.
+
+%[2] MathWorks. fft. 2022. 11 February 2022. <https://www.mathworks.com/help/matlab/ref/fft.html>.
+
