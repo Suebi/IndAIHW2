@@ -41,6 +41,7 @@ FMTest=[[structuretest.magnear20]',[structuretest.stdv20]',[structuretest.magnea
 NamesTest=createnamevec(structuretest);
 
 predtest=1./(1+exp(-[ones(size(FMTest,1),1),FMTest]*B));
+plotcurves(structuretrain, directorys)
 plotcurves(structuretest, directorys)
 % figure(1)
 % plot([structuretrain.magnear20]')
@@ -87,7 +88,7 @@ function [structure] = plotcurves(structure, directorys)
         hold on
         plot(structure(i).freqnear40, structure(i).magnear40, 'g.', 'LineWidth', 2, 'MarkerSize', 25,'DisplayName','Max Near 40');
         legend;
-        xlabel('freq(Hz)')
+        xlabel('Frequency (Hz)')
         xlim([0 60])
         %ylim([0 0.03])
         ylabel('Magnitude')
