@@ -26,7 +26,7 @@ structuretest=struct([]);
 directoryTe=join([projectPath,"Testing",""],delimeter);
 structuretest = createstructure(directoryTe,structuretest,-1);
 
-directorys=join([projectPath,"results",""],delimeter);
+directorys=join([projectPath,"Results",""],delimeter);
 %plotcurves(structuretrain, directorys)
 %plotcurves(structuretest, directorys)
 
@@ -39,7 +39,7 @@ FMTest=[[structuretest.magnear20]',[structuretest.magnear40]',[structuretest.std
 NamesTest=createnamevec(structuretest);
 
 % Train Log Regression
-linCoef = glmfit([structuretrain.magnear20], [structuretrain.HorF]', 'binomial','link','logit');
+linCoef = glmfit([structuretrain.magnear20], [structuretrain.HorF]', 'binomial','link','probit');
 figure(1)
 trainingResults = plotLogRegression([structuretrain.magnear20], linCoef);
 title('Training Data')
@@ -129,6 +129,7 @@ function [structure] = createstructure(directory,structure,HorF)
         [structure(i).freqnear40,structure(i).magnear40] = findmax(structure(i).freq,structure(i).mag,40*0.8,40*1.2);
         structure(i).stdv20=stdevr(structure(i).freq,structure(i).mag,structure(i).freqnear20);
         structure(i).stdv40=stdevr(structure(i).freq,structure(i).mag,structure(i).freqnear40);
+        structure(i).harRatio = structure(i).magnear20/structure(i).magnear40;
         j=j+1;
     end
 end
