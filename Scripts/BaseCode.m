@@ -17,10 +17,10 @@ projectPath = projectPath{1};
 
 directoryF=join([projectPath, "Training","Faulty",""],delimeter);
 structuretrain=struct([]);
-structuretrain = createstructure(directoryF,structuretrain,0.001);
+structuretrain = createstructure(directoryF,structuretrain,0);
 
 directoryH=join([projectPath, "Training","Healthy",""],delimeter);
-structuretrain = createstructure(directoryH,structuretrain,0.999);
+structuretrain = createstructure(directoryH,structuretrain,1);
 
 structuretest=struct([]);
 directoryTe=join([projectPath,"Testing",""],delimeter);
@@ -41,42 +41,30 @@ NamesTest=createnamevec(structuretest);
 % Train Log Regression
 linCoef = glmfit([[structuretrain.magnear20]',[structuretrain.magnear40]'], [structuretrain.HorF]', 'binomial','link','logit');
 figure(1)
-trainingResults = plotLogRegression([[structuretrain.magnear20]',[structuretrain.magnear40]'], linCoef);
-title('Training Data with Mag. 21Hz and Mag. 42Hz')
+figTitle = 'Training Data with Mag. 21Hz and Mag. 42Hz';
+trainingResults.twoVars = plotLogRegression([[structuretrain.magnear20]',[structuretrain.magnear40]'], linCoef, figTitle);
 
 figure(2)
-testingResults.twoVars = plotLogRegression([[structuretest.magnear20]',[structuretest.magnear40]'], linCoef);
-title('Testing Data with Mag. 21Hz and Mag. 42Hz')
+figTitle = ('Testing Data with Mag. 21Hz and Mag. 42Hz');
+testingResults.twoVars = plotLogRegression([[structuretest.magnear20]',[structuretest.magnear40]'], linCoef, figTitle);
 
 linCoef = glmfit([structuretrain.magnear20], [structuretrain.HorF]', 'binomial','link','logit');
 figure(3)
 testingResults.mag20 = plotLogRegression([structuretest.magnear20], linCoef);
 title('Testing Data with Mag. 21Hz')
 
-linCoef = glmfit([structuretrain.magnear40], [structuretrain.HorF]', 'binomial','link','logit');
 figure(4)
+trainingResults.mag20 = plotLogRegression([structuretrain.magnear20], linCoef);
+title('Training Data with Mag. 21Hz')
+
+linCoef = glmfit([structuretrain.magnear40], [structuretrain.HorF]', 'binomial','link','logit');
+figure(5)
 testingResults.mag40 = plotLogRegression([structuretest.magnear40], linCoef);
 title('Testing Data with Mag. 42Hz')
 
-% figure(1)
-% plot([structuretrain.magnear20]')
-% xlabel('File')
-% ylabel('FFT Mag Near First Peak')
-% saveas(gcf,strcat(directorys,'FFT Mag Near First Peak','.pdf'))
-% figure(2)
-% plot([structuretrain.magnear40]')
-% xlabel('File')
-% ylabel('FFT Mag Near Sec Peak')
-% saveas(gcf,strcat(directorys,'FFT Mag Near Sec Peak','.pdf'))
-% figure(3)
-% plot([structuretrain.stdv20]')
-% xlabel('File')
-% ylabel('Stdev Near First Peak')
-% saveas(gcf,strcat(directorys,'Stdev Near First Peak','.pdf'))
-% figure(4)
-% plot([structuretrain.stdv40]')
-% xlabel('File')
-% saveas(gcf,strcat(directorys,'Stdev Near sec Peak','.pdf'))
+figure(6)
+trainingResults.mag40 = plotLogRegression([structuretrain.magnear40], linCoef);
+title('Training Data with Mag. 42Hz')
 
 function [names] = createnamevec(structure)
     names=string.empty;
@@ -111,7 +99,7 @@ function [structure] = plotcurves(structure, directorys)
     end
 end
 
-function failureProb = plotLogRegression(predictData, linCoefs)
+function failureProb = plotLogRegression(predictData, linCoefs, varargin)
 z = @(x)(linCoefs(1) + (x*linCoefs(2:end)));
 zFinal = @(x)(1 ./(1+exp(-(z(x)))));   
 failureProb = zFinal(predictData);
@@ -125,28 +113,62 @@ for k = 1:numVars
     funcMin(k) = min(predictData(:,k));
     funcMax(k) = max(predictData(:,k));
     funcSamplePoints(:,k) = funcMin(k):(funcMax(k)-funcMin(k))/1000:funcMax(k);
+    funcQuarters(:,k) = funcMin(k):(funcMax(k)-funcMin(k))/4:funcMax(k);
 end
 if numVars > 1
-    %subplot(2,1,1)
-    surfDim = size(funcSamplePoints,1);
-    sampSurface = zeros(surfDim);
-    for k = 1:surfDim
-        for m = 1:surfDim
-            sampSurface(k,m) = zFinal([funcSamplePoints(k,1),funcSamplePoints(m,2)]);
+    for k = 1:numVars
+        subplot(numVars,1,k)
+        legendLabel = string.empty(5,0);
+        for m = 1:5
+            marginSamplePredictors = ones(size(funcSamplePoints,1),numVars);
+            for n = 1:numVars
+                if n == k
+                    marginSamplePredictors(:,n) = funcSamplePoints(:,k);
+                else
+                    marginSamplePredictors(:,n) = funcQuarters(m,n)*marginSamplePredictors(:,n);
+                end
+            end
+            marginSampleResults = zFinal(marginSamplePredictors);
+            plot(funcSamplePoints(:,k),marginSampleResults)
+            if m ==1
+                hold on
+            end
+            if k == 1
+                legendLabel(m) = sprintf('42Hz Magnitude of %0.3f', funcQuarters(m,2));
+            elseif k ==2
+                legendLabel(m) = sprintf('21Hz Magnitude of %0.3f', funcQuarters(m,1));
+            end
         end
+        hold off
+        if k == 1
+            title(varargin{1})
+            xlabel('Magnitude of Acceleration at 21Hz')
+        elseif k==2
+            xlabel('Magnitude of Acceleration at 42Hz')
+        end
+        ylabel('Probability of Healthy Spindle')
+        legend(legendLabel);
     end
-    surf(funcSamplePoints(:,2),funcSamplePoints(:,1),sampSurface)
-    colormap(pink)
-    shading interp
-    xlabel('Magnitude of Acceleration at 40Hz');
-    ylabel('Magnitude of Acceleration at 20Hz');
-    zlabel('Probability of Healthy Spindle');
+%     surfDim = size(funcSamplePoints,1);
+%     sampSurface = zeros(surfDim);
+%     for k = 1:surfDim
+%         for m = 1:surfDim
+%             sampSurface(k,m) = zFinal([funcSamplePoints(k,1),funcSamplePoints(m,2)]);
+%         end
+%     end
+%     surf(funcSamplePoints(:,2),funcSamplePoints(:,1),sampSurface)
+%     colormap(pink)
+%     shading interp
+%     xlabel('Magnitude of Acceleration at 40Hz');
+%     ylabel('Magnitude of Acceleration at 20Hz');
+%     zlabel('Probability of Healthy Spindle');
     %subplot(2,1,2)
     %plot
 elseif numVars == 1
     plot(predictData,failureProb,'*',funcSamplePoints(:,1),zFinal(funcSamplePoints(:,1)),'-');
     xlabel('Magnitude of Acceleration at 20Hz');
     ylabel('Probability of Healthy Spindle');
+    legend('Data Samples','Regression Curve')
 end
 
 %funcMin = min(predictData);
