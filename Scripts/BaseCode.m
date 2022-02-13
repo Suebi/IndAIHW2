@@ -10,6 +10,8 @@ if ispc
 else
     delimeter = "/";
 end
+
+% Gets Data
 scriptPath = split(mfilename('fullpath'),delimeter);
 projectPath = join(scriptPath(1:end-2,:),delimeter);
 projectPath = projectPath{1};
@@ -26,23 +28,9 @@ directoryTe=join([projectPath,"Testing",""],delimeter);
 structuretest = createstructure(directoryTe,structuretest,-1);
 
 directorys=join([projectPath,"Results",""],delimeter);
-%plotcurves(structuretrain, directorys)
-%plotcurves(structuretest, directorys)
 
-%[1]
-FMTrain=[[structuretrain.magnear20]',[structuretrain.stdv20]',[structuretrain.magnear40]',[structuretrain.stdv40]'];
-NamesTrain=createnamevec(structuretrain);
-HorFVTrain=[structuretrain.HorF]'+1;
-
-B=mnrfit(FMTrain,HorFVTrain);
-predtrain=1./(1+exp(-[ones(length(HorFVTrain),1),FMTrain]*B));
-
-FMTest=[[structuretest.magnear20]',[structuretest.stdv20]',[structuretest.magnear40]',[structuretest.stdv40]'];
-NamesTest=createnamevec(structuretest);
-
-% Train Log Regression
+% Train and Plot Log Regression
 linCoef = glmfit([[structuretrain.magnear20]',[structuretrain.magnear40]'], [structuretrain.HorF]', 'binomial','link','logit');
-plotcurves(structuretest, directorys)
 figure(1)
 figTitle = 'Training Data with Mag. 21Hz and Mag. 42Hz';
 trainingResults.twoVars = plotLogRegression([[structuretrain.magnear20]',[structuretrain.magnear40]'], linCoef, figTitle);
@@ -68,6 +56,10 @@ title('Testing Data with Mag. 42Hz')
 figure(6)
 trainingResults.mag40 = plotLogRegression([structuretrain.magnear40], linCoef);
 title('Training Data with Mag. 42Hz')
+
+% Plot FFTs
+%plotcurves(structuretrain, directorys)
+%plotcurves(structuretest, directorys)
 
 function [names] = createnamevec(structure)
     names=string.empty;
@@ -133,7 +125,7 @@ if numVars > 1
                 end
             end
             marginSampleResults = zFinal(marginSamplePredictors);
-            plot(funcSamplePoints(:,k),marginSampleResults)
+            plot(funcSamplePoints(:,k),marginSampleResults,'LineWidth',2)
             if m ==1
                 hold on
             end
@@ -153,35 +145,12 @@ if numVars > 1
         ylabel('Probability of Healthy Spindle')
         legend(legendLabel);
     end
-%     surfDim = size(funcSamplePoints,1);
-%     sampSurface = zeros(surfDim);
-%     for k = 1:surfDim
-%         for m = 1:surfDim
-%             sampSurface(k,m) = zFinal([funcSamplePoints(k,1),funcSamplePoints(m,2)]);
-%         end
-%     end
-%     surf(funcSamplePoints(:,2),funcSamplePoints(:,1),sampSurface)
-%     colormap(pink)
-%     shading interp
-%     xlabel('Magnitude of Acceleration at 40Hz');
-%     ylabel('Magnitude of Acceleration at 20Hz');
-%     zlabel('Probability of Healthy Spindle');
-    %subplot(2,1,2)
-    %plot
 elseif numVars == 1
-    plot(predictData,failureProb,'*',funcSamplePoints(:,1),zFinal(funcSamplePoints(:,1)),'-');
+    plot(predictData,failureProb,'*',funcSamplePoints(:,1),zFinal(funcSamplePoints(:,1)),'-','LineWidth',2);
     xlabel('Magnitude of Acceleration at 20Hz');
     ylabel('Probability of Healthy Spindle');
     legend('Data Samples','Regression Curve')
 end
-
-%funcMin = min(predictData);
-%funcMax = max(predictData);
-%funcSamplePoints = funcMin:(funcMax-funcMin)/1000:funcMax;
-
-%hold on
-
-%hold off
 end
 
 function [structure] = createstructure(directory,structure,HorF)
